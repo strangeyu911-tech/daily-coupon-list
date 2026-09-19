@@ -2,9 +2,9 @@
 name: daily-coupon-list
 display_name: 每日领券省钱清单
 display_name_en: Daily Coupon Savings List
-description: 每日自动领券 + 券后省钱清单助手。当用户提到领券、优惠券、外卖红包、券后价、最低实付、这单能省多少钱、今天有哪些券、值不值得买、怎么凑单更便宜时使用。它先领下当天账号下的全部券，再按「使用门槛 − 券面额」算出每张券的理论最低实付，分为低门槛券、近白嫖券、实物专区、其余品类四组输出清单，支持记录领取与核销，并可挂在定时任务上每天自动重跑。相比美团官方专家的固定话术问答，它用脚本直接产出结构化清单：分组、排序、阈值全部可调，可批量与定时编排，且纯本地计算、不联网、不依赖任何第三方专家包。
-description_zh: 每天自动领券，再把券列表按使用门槛减券面额算出理论最低实付，分组输出省钱清单，并记录领取与核销，可挂定时任务每日重跑。比官方专家的固定话术更灵活：清单可分组排序、阈值可调、可定时批量，纯本地计算不联网、不依赖专家包。
-description_en: Claim today's coupons, then turn the coupon list into a grouped savings report by computing the theoretical minimum out-of-pocket cost as threshold minus face value, and log claims and redemptions; it can also be wired to a daily scheduled run. Unlike the fixed-script replies of the Meituan official expert, it emits a structured list through a local script, with grouping, sorting and thresholds all tunable, batch or scheduled runs, and fully offline execution with no third-party expert bundle.
+description: 每日自动领券 + 券后省钱清单助手。当用户提到领券、优惠券、外卖红包、券后价、最低实付、这单能省多少钱、今天有哪些券、值不值得买、怎么凑单更便宜时使用。自动领券通道目前只支持美团，其他平台需要手动提供券数据；领到券后按「使用门槛 − 券面额」算出每张券的理论最低实付，分为低门槛券、近白嫖券、实物专区、其余品类四组输出清单，支持记录领取与核销，并可挂在定时任务上每天自动重跑。相比美团官方专家的固定话术问答，它用脚本直接产出结构化清单：分组、排序、阈值全部可调，可批量与定时编排，且纯本地计算、不联网、不依赖任何第三方专家包。
+description_zh: 每天自动领券（自动领券通道目前仅支持美团，其他平台需手动提供券数据），再把券列表按使用门槛减券面额算出理论最低实付，分组输出省钱清单，并记录领取与核销，可挂定时任务每日重跑。比官方专家的固定话术更灵活：清单可分组排序、阈值可调、可定时批量，纯本地计算不联网、不依赖专家包。
+description_en: Claim today's coupons and turn the coupon list into a grouped savings report by computing the theoretical minimum out-of-pocket cost as threshold minus face value, then log claims and redemptions; it can also be wired to a daily scheduled run. Automatic claiming currently supports Meituan only — for every other platform the coupon data has to be supplied manually, while the calculation itself is platform-agnostic. Unlike the fixed-script replies of the Meituan official expert, it emits a structured list through a local script, with grouping, sorting and thresholds all tunable, batch or scheduled runs, and fully offline execution with no third-party expert bundle.
 category: 生活服务
 version: 1.0.0
 author: Strange
@@ -15,8 +15,10 @@ author: Strange
 先领券，再把一堆券变成一张能直接照着花钱的清单。
 
 ```
-每日 09:00  →  自动领券  →  按「券后最低实付」分组  →  省钱清单
+每日 09:00  →  自动领券（美团）  →  按「券后最低实付」分组  →  省钱清单
 ```
+
+自动领券只对美团成立，别家没有接口 —— 见下面的「平台支持范围」。
 
 ## 核心公式
 
@@ -34,6 +36,19 @@ author: Strange
 
 用户提到这些就触发：领券、优惠券、外卖红包、券后价、最低实付、省多少钱、
 今天有哪些券、哪个券划算、券能不能叠加、怎么凑单。
+
+## 平台支持范围
+
+| 平台 | 自动领券 | 出清单 |
+| --- | --- | --- |
+| 美团 | ✅ 走路径 A 一键领取当日全部券 | ✅ |
+| 淘宝闪购、京东外卖、饿了么、打车/团购等 | ❌ 无接口，只有人工点击的 H5 领券入口 | ✅ 走路径 B，用户手动提供券数据即可 |
+
+**说「自动领券」时只算美团。** 用户问到别家时照实说「这个平台目前只能手动」，
+然后把券数据要过来继续算 —— 第 ② ③ ④ 步与来源平台无关。
+
+**禁止为了「支持更多平台」去爬活动页。** 这类页面改版频繁、登录态一失效还会
+静默少券，产出缺券的清单比没有更糟。详见 @references/data-sources.md。
 
 ## 与美团官方专家的关系
 
@@ -60,7 +75,8 @@ author: Strange
 ## 执行步骤
 
 1. **先领券** —— 走 @references/data-sources.md 里的取数路径，一键领取当日券并拿到完整的
-   `coupons[]` 数组。当天已领过会返回「您今天已经领取过优惠券」这类提示码，
+   `coupons[]` 数组。**自动领取只支持美团**；其他平台没有接口，直接问用户要券数据，
+   不要改成去爬页面。当天已领过会返回「您今天已经领取过优惠券」这类提示码，
    但**数组照旧是齐的**，照常解析，不要报成「领券失败」。
 2. **把返回落到一份 JSON 文件**（不要直接读管道，Windows 下中文会乱码）。
 3. **跑分组脚本**：
@@ -80,7 +96,8 @@ author: Strange
 
 ## 每日自动重跑
 
-把上面 1~4 步挂到定时任务上，就是「每天自动领券 + 出清单」：
+把上面 1~4 步挂到定时任务上，就是「每天自动领券 + 出清单」。
+**前提是本机有美团的取数通道** —— 定时任务没法跟用户要数据，所以它只对美团成立。
 
 - 触发时间建议**早上 9 点**（当日券池刚刷新，且离到期还有一整天）。
 - 任务里要写死这几条约束，否则很容易跑偏：
