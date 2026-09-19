@@ -45,7 +45,7 @@
 ```
 
 第 ① 步是一条**取数通道**，任何能返回「每张券的门槛 + 面额」的来源都行（见
-[skill/references/data-sources.md](daily-coupon-list/references/data-sources.md)）。
+[daily-coupon-list/references/data-sources.md](daily-coupon-list/references/data-sources.md)）。
 第 ② ③ ④ 步是本项目的主体：纯本地计算，不联网、不上传。
 
 ## 快速开始
